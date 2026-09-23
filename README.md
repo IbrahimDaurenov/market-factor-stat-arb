@@ -1,557 +1,143 @@
 # Market Factor Modeling & Statistical Arbitrage
 
-A research project on using **Principal Component Analysis (PCA)** to separate common market movements from stock-specific residuals and test residual mean reversion.
+Research project using **PCA** to separate common market movements from stock-specific residuals and test residual mean reversion.
 
-The project uses 20 U.S. stocks and builds a rolling, past-only backtest with:
+Main notebook:
 
-- PCA factor extraction
-- residual signals
-- z-score mean-reversion entries
-- PCA factor neutralization
-- a market-regime filter based on PC1
-- transaction costs
-- turnover and drawdown analysis
+`notebooks/03_final_research_results.ipynb`
 
-The main notebook is:
+## Idea
 
-[`notebooks/03_final_research_results.ipynb`](notebooks/03_final_research_results.ipynb)
-
----
-
-## 1. Data
-
-The universe contains 20 stocks from several sectors:
-
-```text
-AAPL MSFT NVDA GOOGL META
-JPM BAC GS
-XOM CVX
-JNJ PFE
-WMT COST
-BA CAT
-KO PEP
-DIS NFLX
-```
-
-Daily simple returns are
-
-$$
-r_t = \frac{P_t}{P_{t-1}} - 1.
-$$
-
-Each trading day is represented by a vector
-
-$$
-x_t =
-\begin{bmatrix}
-r_{t,1} \\
-r_{t,2} \\
-\vdots \\
-r_{t,N}
-\end{bmatrix}
-\in \mathbb{R}^N.
-$$
-
----
-
-## 2. PCA Market Model
-
-Let \(X\) be the centered return matrix.
+Let $x_t \in \mathbb{R}^N$ be the vector of centered stock returns.
 
 The sample covariance matrix is
 
-$$
-\Sigma =
-\frac{1}{T-1}X^\top X.
-$$
+$$\Sigma=\frac{1}{T-1}X^\top X$$
 
-Since \(\Sigma\) is symmetric,
+with eigendecomposition
 
-$$
-\Sigma = Q\Lambda Q^\top,
-$$
+$$\Sigma=Q\Lambda Q^\top$$
 
-where
+The first $k$ eigenvectors form
 
-$$
-Q =
-\begin{bmatrix}
-v_1 & v_2 & \cdots & v_N
-\end{bmatrix}
-$$
-
-contains the orthonormal eigenvectors.
-
-For any direction \(v\),
-
-$$
-\operatorname{Var}(v^\top x)
-=
-v^\top \Sigma v.
-$$
-
-If \(v_i\) is an eigenvector,
-
-$$
-\Sigma v_i = \lambda_i v_i,
-$$
-
-then
-
-$$
-\operatorname{Var}(v_i^\top x)
-=
-\lambda_i.
-$$
-
-Therefore, PCA orders directions by the variance they explain.
-
-In this dataset:
-
-$$
-\text{PC1 explained variance} \approx 41.2\%
-$$
-
-and
-
-$$
-\text{first 6 PCs} \approx 76.7\%.
-$$
-
-This shows that the 20-dimensional return space has a meaningful low-rank structure.
-
----
-
-## 3. PCA Scores and Residuals
-
-Keep the first \(k\) eigenvectors:
-
-$$
-Q_k =
-\begin{bmatrix}
-v_1 & \cdots & v_k
-\end{bmatrix}.
-$$
-
-For a centered return vector \(x_t\), the PCA scores are
-
-$$
-c_t = Q_k^\top x_t.
-$$
+$$Q_k=[v_1,\dots,v_k]$$
 
 The common-factor component is
 
-$$
-\hat{x}_t
-=
-Q_kc_t
-=
-Q_kQ_k^\top x_t.
-$$
+$$\hat{x}_t=Q_kQ_k^\top x_t$$
 
-Define
+and the PCA residual is
 
-$$
-P_k = Q_kQ_k^\top.
-$$
+$$e_t=x_t-\hat{x}_t=(I-Q_kQ_k^\top)x_t$$
 
-Because the columns of \(Q_k\) are orthonormal,
+Since
 
-$$
-P_k^2=P_k,
-\qquad
-P_k^\top=P_k.
-$$
+$$Q_k^\top e_t=0$$
 
-Thus \(P_k\) is an orthogonal projection matrix.
+the residual is orthogonal to the retained PCA factors.
 
-The residual is
+## Signal
 
-$$
-e_t
-=
-x_t-\hat{x}_t
-=
-(I-P_k)x_t.
-$$
+Residuals are accumulated over $H$ days:
 
-It is orthogonal to the retained PCA factors:
+$$s_t=\sum_{j=0}^{H-1}e_{t-j}$$
 
-$$
-Q_k^\top e_t = 0.
-$$
+Then standardized using past data:
 
-The goal is to study whether large residual deviations tend to reverse.
+$$z_t=\frac{s_t-\mu_t}{\sigma_t}$$
 
----
+Trading rule:
 
-## 4. Residual Mean-Reversion Signal
+- $z<-2.5$ → long candidate
+- $z>2.5$ → short candidate
 
-A residual spread is constructed over \(H\) days:
+Final model uses $H=40$.
 
-$$
-s_t
-=
-\sum_{j=0}^{H-1} e_{t-j}.
-$$
+## PC1 Regime Filter
 
-The final model uses
+Define the fraction of variance explained by PC1:
 
-$$
-H=40.
-$$
-
-The spread is standardized using only past data:
-
-$$
-z_t
-=
-\frac{s_t-\mu_t}{\sigma_t},
-$$
-
-where \(\mu_t\) and \(\sigma_t\) are estimated from the previous 252 trading days.
-
-Entry rule:
-
-$$
-z_{t,i} < -2.5
-\quad\Rightarrow\quad
-\text{long candidate}
-$$
-
-and
-
-$$
-z_{t,i} > 2.5
-\quad\Rightarrow\quad
-\text{short candidate}.
-$$
-
-Positions are closed when the spread returns toward its center or when the maximum holding period is reached.
-
----
-
-## 5. PC1 Market-Regime Filter
-
-The simple residual strategy was not stable across market regimes.
-
-For each day, define the PC1 variance share
-
-$$
-m_t
-=
-\frac{\lambda_{1,t}}
-{\sum_j \lambda_{j,t}}.
-$$
-
-The strategy compares \(m_t\) with its past 252-day median:
-
-$$
-q_t =
-\operatorname{Median}
-(
-m_{t-252},
-\ldots,
-m_{t-1}
-).
-$$
+$$m_t=\frac{\lambda_{1,t}}{\sum_j\lambda_{j,t}}$$
 
 New trades are allowed only when
 
-$$
-m_t > q_t.
-$$
+$$m_t>\operatorname{Median}(m_{t-252},\dots,m_{t-1})$$
 
-The idea is simple:
+The goal is to trade residual mean reversion only when the common market-factor structure is relatively strong.
 
-when PC1 explains a relatively large part of market variance, the common-factor structure is stronger, so the PCA residual has a clearer interpretation as a relative stock-specific deviation.
+## Factor-Neutral Portfolio
 
-Existing positions are not immediately closed when the regime changes.
+Raw signal weights $w^{raw}$ are projected away from the retained PCA factors:
 
----
+$$w=(I-Q_kQ_k^\top)w^{raw}$$
 
-## 6. Factor-Neutral Portfolio
+Therefore
 
-Let \(w^{raw}\) be the portfolio weights generated by the trading signals.
+$$Q_k^\top w=0$$
 
-To remove exposure to the retained PCA factors,
+before gross-exposure scaling.
 
-$$
-w
-=
-(I-Q_kQ_k^\top)w^{raw}.
-$$
-
-Then
-
-$$
-Q_k^\top w
-=
-Q_k^\top
-(I-Q_kQ_k^\top)
-w^{raw}.
-$$
-
-Using
-
-$$
-Q_k^\top Q_k = I,
-$$
-
-we obtain
-
-$$
-Q_k^\top w = 0.
-$$
-
-Therefore, the portfolio is neutral to the retained PCA directions before gross-exposure scaling.
-
----
-
-## 7. Backtest Design
-
-The backtest is chronological.
-
-For day \(t\):
-
-$$
-\text{past data}
-\rightarrow
-\Sigma_t
-\rightarrow
-Q_{k,t}
-\rightarrow
-e_t
-\rightarrow
-s_t
-\rightarrow
-z_t
-\rightarrow
-w_t
-\rightarrow
-r_{t+1}.
-$$
-
-The signal at day \(t\) is applied to the return at day \(t+1\).
-
-This avoids using future returns when constructing a trade.
-
-### Final parameters
+## Final Parameters
 
 | Parameter | Value |
 |---|---:|
 | PCA window | 252 days |
-| Number of PCs \(k\) | 6 |
-| Residual horizon \(H\) | 40 days |
-| Z-score entry | 2.5 |
-| Z-score window | 252 days |
-| Maximum holding | 40 days |
-| Maximum positions | 10 |
+| PCs | 6 |
+| Residual horizon | 40 days |
+| Entry threshold | 2.5 |
+| Max holding | 40 days |
+| Max positions | 10 |
 | Position size | 5% |
-| Maximum gross exposure | 50% |
-| PCA rebalance interval | 20 days |
+| Max gross exposure | 50% |
 | Transaction cost | 10 bps |
-| PC1 regime window | 252 days |
-| PC1 regime threshold | rolling median |
+| Regime window | 252 days |
 
----
-
-## 8. Transaction Costs
-
-Portfolio turnover is defined as
-
-$$
-\tau_t
-=
-\sum_i
-|w_{t,i}-w_{t-1,i}|.
-$$
-
-With transaction-cost rate \(c\),
-
-$$
-Cost_t = c\tau_t.
-$$
-
-Net return is
-
-$$
-R_t^{net}
-=
-R_t^{gross}
--
-Cost_t.
-$$
-
-The final backtest uses
-
-$$
-c = 10\text{ bps} = 0.001.
-$$
-
----
-
-## 9. Final Results
-
-The final strategy produced approximately:
+## Results
 
 | Metric | Result |
 |---|---:|
-| Cumulative return | **3.50%** |
-| Annualized volatility | **1.06%** |
-| Sharpe ratio | **0.59** |
-| Max drawdown | **-1.54%** |
-| Average daily turnover | **0.72%** |
-| Total transaction costs | **1.01%** |
-| Average gross exposure | **7.59%** |
-| Average active positions | **1.12** |
+| Cumulative return | 3.50% |
+| Annualized volatility | 1.06% |
+| Sharpe ratio | 0.59 |
+| Max drawdown | -1.54% |
+| Average daily turnover | 0.72% |
+| Total transaction costs | 1.01% |
 
-The portfolio uses relatively little average gross exposure, so the absolute return is small compared with a fully invested portfolio.
+Without the PC1 regime filter:
 
----
-
-## 10. Regime Filter Ablation
-
-The same strategy was tested with and without the PC1 regime filter.
-
-| Metric | Baseline | PC1 Regime Filter |
+| Metric | Baseline | PC1 Filter |
 |---|---:|---:|
-| Cumulative return | -1.24% | **3.50%** |
-| Sharpe ratio | -0.13 | **0.59** |
-| Max drawdown | -4.49% | **-1.54%** |
-| Average daily turnover | 1.69% | **0.72%** |
-| Total transaction costs | 2.35% | **1.01%** |
+| Return | -1.24% | 3.50% |
+| Sharpe | -0.13 | 0.59 |
+| Max drawdown | -4.49% | -1.54% |
+| Daily turnover | 1.69% | 0.72% |
 
-The regime filter reduced both turnover and drawdown while improving risk-adjusted performance.
+## Robustness
 
-This was the strongest improvement found in the project.
+Empirical quantile thresholds and an AR(1) filter were tested but did not improve the strategy.
 
----
+The main limitation is sensitivity to the residual horizon:
 
-## 11. Z-Score vs Empirical Quantiles
+| $H$ | Sharpe |
+|---:|---:|
+| 30 | -0.03 |
+| 40 | 0.59 |
+| 50 | 0.05 |
+| 60 | -0.03 |
 
-A non-parametric alternative was tested using empirical tail quantiles instead of z-scores.
-
-| Metric | Z-score | Empirical Quantiles |
-|---|---:|---:|
-| Cumulative return | **3.50%** | 3.24% |
-| Sharpe ratio | **0.59** | 0.37 |
-| Max drawdown | **-1.54%** | -3.38% |
-| Average daily turnover | **0.72%** | 1.70% |
-| Total transaction costs | **1.01%** | 2.38% |
-
-Empirical quantiles generated more trades and higher transaction costs without improving risk-adjusted performance.
-
-The final strategy therefore uses z-scores.
-
----
-
-## 12. Portfolio Robustness
-
-Different position concentration and holding-period choices were also tested.
-
-| Configuration | Return | Sharpe | Max Drawdown | Turnover |
-|---|---:|---:|---:|---:|
-| 10 positions × 5%, hold 20 | 2.36% | 0.46 | -1.54% | 0.88% |
-| **10 positions × 5%, hold 40** | **3.50%** | **0.59** | **-1.54%** | **0.72%** |
-| 5 positions × 10%, hold 20 | 3.98% | 0.42 | -2.09% | 1.61% |
-| 5 positions × 10%, hold 40 | 4.59% | 0.46 | -2.26% | 1.26% |
-
-The final configuration was selected for better risk-adjusted performance rather than maximum absolute return.
-
----
-
-## 13. Residual-Horizon Sensitivity
-
-The largest limitation is sensitivity to the residual horizon \(H\).
-
-| \(H\) | Return | Sharpe | Max Drawdown |
-|---:|---:|---:|---:|
-| 30 | -0.21% | -0.03 | -2.33% |
-| **40** | **3.50%** | **0.59** | **-1.54%** |
-| 50 | 0.24% | 0.05 | -2.44% |
-| 60 | -0.25% | -0.03 | -3.13% |
-
-The strong result at \(H=40\) does not remain at nearby horizons.
-
-This is evidence that the strategy may be sensitive to parameter choice and may contain backtest overfitting.
-
----
-
-## 14. Other Experiments
-
-Two additional ideas were tested.
-
-### AR(1)
-
-An AR(1)-based mean-reversion filter was considered:
-
-$$
-S_{t+1}
-=
-\alpha+\phi S_t+\epsilon_{t+1}.
-$$
-
-The estimated persistence was close to one and the filter did not improve performance.
-
-It was therefore removed from the final strategy.
-
-### Empirical thresholds
-
-Rolling empirical tail quantiles were tested as an alternative to z-score thresholds.
-
-They increased trading frequency and transaction costs but did not improve Sharpe ratio.
-
----
-
-## 15. Conclusions
-
-The main findings are:
-
-1. The stock-return universe has clear low-rank structure.
-
-2. PCA provides a direct linear-algebraic decomposition
-
-$$
-x_t
-=
-Q_kQ_k^\top x_t
-+
-(I-Q_kQ_k^\top)x_t.
-$$
-
-3. The second term can be used as a factor-neutral residual signal.
-
-4. A simple residual mean-reversion strategy is weak without regime control.
-
-5. Residual mean reversion performs better when PC1 explains an above-median share of recent market variance.
-
-6. The PC1 regime filter improved Sharpe ratio, drawdown, turnover, and transaction costs.
-
-7. The result is sensitive to the residual horizon \(H\), so the backtest should be treated as exploratory evidence, not proof of a stable trading alpha.
-
-The project shows how linear algebra, PCA, statistical signals, portfolio projections, and realistic backtesting can be combined in one statistical-arbitrage workflow.
-
----
+So the result should be treated as **exploratory**, not as evidence of a stable trading alpha.
 
 ## Project Structure
 
 ```text
-project1_market_factor_stat_arb/
-│
+.
 ├── README.md
 ├── requirements.txt
-│
-├── data/
-├── figures/
-│
 ├── notebooks/
 │   ├── 01_pipeline.ipynb
 │   ├── 02_residual_diagnostics.ipynb
 │   └── 03_final_research_results.ipynb
-│
 └── src/
-    ├── __init__.py
     ├── data.py
     ├── pca.py
     ├── residuals.py
@@ -561,26 +147,15 @@ project1_market_factor_stat_arb/
     └── metrics.py
 ```
 
----
-
-## Running the Project
-
-Install dependencies:
+## Run
 
 ```bash
 pip install -r requirements.txt
-```
-
-Start Jupyter:
-
-```bash
 jupyter lab
 ```
 
-Then open:
+Open:
 
 ```text
 notebooks/03_final_research_results.ipynb
 ```
-
-The research and parameter experiments are kept in the earlier notebooks, while the final notebook contains the main model, results, and robustness checks.
