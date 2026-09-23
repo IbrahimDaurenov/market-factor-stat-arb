@@ -5,15 +5,7 @@ This module implements PCA directly from the covariance matrix.
 The main steps are
 
 ```math
-X
-\rightarrow
-X_c
-\rightarrow
-\Sigma
-\rightarrow
-Q\Lambda Q^\top
-\rightarrow
-Q_k
+X \rightarrow X_c \rightarrow \Sigma \rightarrow Q\Lambda Q^\top \rightarrow Q_k
 ```
 
 ---
@@ -25,18 +17,15 @@ Suppose there are $T$ trading days and $N$ stocks.
 The return matrix is
 
 ```math
-X\in\mathbb{R}^{T\times N}
+X \in \mathbb{R}^{T \times N}
 ```
 
-where
-
-- each row is one trading day;
-- each column is one stock.
+Each row is one trading day and each column is one stock.
 
 The return vector for day $t$ is
 
 ```math
-x_t\in\mathbb{R}^{N}
+x_t \in \mathbb{R}^N
 ```
 
 ---
@@ -48,36 +37,31 @@ PCA is applied to centered data.
 The sample mean vector is
 
 ```math
-\mu
-=
-\frac{1}{T}
-\sum_{t=1}^{T}x_t
+\mu = \frac{1}{T}\sum_{t=1}^{T}x_t
 ```
 
 with
 
 ```math
-\mu\in\mathbb{R}^{N}
+\mu \in \mathbb{R}^N
 ```
 
-The centered observation is
+The centered return vector is
 
 ```math
-z_t=x_t-\mu
+z_t = x_t - \mu
 ```
 
 and the centered data matrix is
 
 ```math
-X_c
-=
-X-\mathbf{1}\mu^\top
+X_c = X - \mathbf{1}\mu^\top
 ```
 
-where
+with
 
 ```math
-X_c\in\mathbb{R}^{T\times N}
+X_c \in \mathbb{R}^{T \times N}
 ```
 
 Each column of $X_c$ has sample mean zero.
@@ -86,51 +70,34 @@ Each column of $X_c$ has sample mean zero.
 
 ## Sample Covariance Matrix
 
-The covariance matrix is
+The sample covariance matrix is
 
 ```math
-\Sigma
-=
-\frac{1}{T-1}
-X_c^\top X_c
+\Sigma = \frac{1}{T-1}X_c^\top X_c
 ```
 
 with
 
 ```math
-\Sigma\in\mathbb{R}^{N\times N}
+\Sigma \in \mathbb{R}^{N \times N}
 ```
 
-To see why this works, consider entry $(i,j)$:
-
-```math
-(X_c^\top X_c)_{ij}
-=
-\sum_{t=1}^{T}
-z_{t,i}z_{t,j}
-```
-
-Therefore,
+Entry $(i,j)$ is
 
 ```math
 \Sigma_{ij}
 =
 \frac{1}{T-1}
-\sum_{t=1}^{T}
-z_{t,i}z_{t,j}
+\sum_{t=1}^{T}z_{t,i}z_{t,j}
 ```
 
-which is the sample covariance between stocks $i$ and $j$.
+so off-diagonal entries measure covariance between stocks.
 
-For $i=j$,
+The diagonal entries are sample variances:
 
 ```math
-\Sigma_{ii}
-=
-\operatorname{Var}(X_i)
+\Sigma_{ii} = \mathrm{Var}(X_i)
 ```
-
-so the diagonal contains sample variances.
 
 ---
 
@@ -139,18 +106,16 @@ so the diagonal contains sample variances.
 The covariance matrix is symmetric:
 
 ```math
-\Sigma^\top=\Sigma
+\Sigma^\top = \Sigma
 ```
 
 because
 
 ```math
-(X_c^\top X_c)^\top
-=
-X_c^\top X_c
+(X_c^\top X_c)^\top = X_c^\top X_c
 ```
 
-This is important because real symmetric matrices have real eigenvalues and an orthonormal eigenvector basis.
+A real symmetric matrix has real eigenvalues and an orthonormal eigenvector basis.
 
 ---
 
@@ -159,155 +124,137 @@ This is important because real symmetric matrices have real eigenvalues and an o
 For any vector
 
 ```math
-a\in\mathbb{R}^{N}
+a \in \mathbb{R}^N
 ```
 
 we have
 
 ```math
-a^\top\Sigma a
+a^\top \Sigma a
 =
 \frac{1}{T-1}
 a^\top X_c^\top X_c a
 ```
 
-and therefore
-
-```math
-a^\top\Sigma a
-=
-\frac{1}{T-1}
-\|X_ca\|^2
-\geq0
-```
-
-Hence $\Sigma$ is positive semidefinite.
-
 Therefore,
 
 ```math
-\lambda_i\geq0
+a^\top \Sigma a
+=
+\frac{1}{T-1}
+\|X_c a\|^2
+\ge 0
 ```
 
-for every covariance eigenvalue.
+So $\Sigma$ is positive semidefinite and all covariance eigenvalues satisfy
+
+```math
+\lambda_i \ge 0
+```
 
 ---
 
 ## Eigendecomposition
 
-Because $\Sigma$ is symmetric,
+Because $\Sigma$ is real and symmetric,
 
 ```math
-\Sigma
-=
-Q\Lambda Q^\top
+\Sigma = Q\Lambda Q^\top
 ```
 
 where
 
 ```math
-Q
-=
-[v_1,\ldots,v_N]
+Q = [v_1,\ldots,v_N]
 ```
 
-contains eigenvectors and
+contains the eigenvectors.
+
+The eigenvalue matrix is
 
 ```math
 \Lambda
 =
-\operatorname{diag}
-(\lambda_1,\ldots,\lambda_N)
+\begin{bmatrix}
+\lambda_1 & 0 & \cdots & 0 \\
+0 & \lambda_2 & \cdots & 0 \\
+\vdots & \vdots & \ddots & \vdots \\
+0 & 0 & \cdots & \lambda_N
+\end{bmatrix}
 ```
-
-contains eigenvalues.
 
 Each eigenvector satisfies
 
 ```math
-\Sigma v_i
-=
-\lambda_i v_i
+\Sigma v_i = \lambda_i v_i
 ```
 
-and the eigenvectors can be chosen orthonormal:
+and the eigenvectors are orthonormal:
 
 ```math
-v_i^\top v_j
-=
-0
-\qquad
-(i\neq j)
+v_i^\top v_j = 0
+\quad
+(i \ne j)
 ```
 
 and
 
 ```math
-\|v_i\|=1
+v_i^\top v_i = 1
 ```
 
-Thus,
+Therefore,
 
 ```math
-Q^\top Q=I
+Q^\top Q = I
 ```
 
 ---
 
 ## Variance Along a Direction
 
-Take any unit direction
+Take a unit vector
 
 ```math
-v\in\mathbb{R}^{N}
+v \in \mathbb{R}^N,
+\qquad
+v^\top v = 1
 ```
 
-with
+The coordinate of a centered return vector $z$ along $v$ is
 
 ```math
-\|v\|=1
+c = v^\top z
 ```
 
-The scalar coordinate of a centered observation $z$ along $v$ is
+Since the data are centered,
 
 ```math
-c=v^\top z
-```
-
-Because the data are centered,
-
-```math
-E[c]=0
+E[c] = 0
 ```
 
 so
 
 ```math
-\operatorname{Var}(c)
-=
-E[c^2]
+\mathrm{Var}(c) = E[c^2]
 ```
 
 Now,
 
 ```math
-c^2
-=
-(v^\top z)^2
+c^2 = (v^\top z)^2
 ```
 
-and since a scalar equals its transpose,
+and
 
 ```math
-(v^\top z)^2
-=
-v^\top zz^\top v
+(v^\top z)^2 = v^\top z z^\top v
 ```
 
 Therefore,
 
 ```math
-\operatorname{Var}(c)
+\mathrm{Var}(c)
 =
 v^\top E[zz^\top]v
 ```
@@ -315,32 +262,27 @@ v^\top E[zz^\top]v
 Since
 
 ```math
-E[zz^\top]=\Sigma
+E[zz^\top] = \Sigma
 ```
 
 we obtain
 
 ```math
-\boxed{
-\operatorname{Var}(v^\top z)
+\mathrm{Var}(v^\top z)
 =
-v^\top\Sigma v
-}
+v^\top \Sigma v
 ```
+
+This is the key connection between PCA and variance.
 
 ---
 
 ## Why PCA Uses Eigenvectors
 
-PCA asks:
-
-> Which unit direction contains the largest possible variance?
-
-Mathematically,
+PCA looks for the unit direction with maximum variance:
 
 ```math
-\max_{\|v\|=1}
-v^\top\Sigma v
+\max_{v^\top v=1} v^\top \Sigma v
 ```
 
 Using a Lagrange multiplier,
@@ -348,7 +290,7 @@ Using a Lagrange multiplier,
 ```math
 L(v,\lambda)
 =
-v^\top\Sigma v
+v^\top \Sigma v
 -
 \lambda(v^\top v-1)
 ```
@@ -356,35 +298,21 @@ v^\top\Sigma v
 Differentiating with respect to $v$ gives
 
 ```math
-2\Sigma v
--
-2\lambda v
-=
-0
+2\Sigma v - 2\lambda v = 0
 ```
 
-hence
+so
 
 ```math
-\Sigma v
-=
-\lambda v
+\Sigma v = \lambda v
 ```
 
-So every stationary direction is an eigenvector.
+Therefore the stationary directions are eigenvectors of the covariance matrix.
 
-The largest value of
-
-```math
-v^\top\Sigma v
-```
-
-is obtained at the eigenvector associated with the largest eigenvalue.
-
-Therefore the first principal component direction is
+The direction with the largest variance is the eigenvector corresponding to the largest eigenvalue:
 
 ```math
-v_1
+\Sigma v_1 = \lambda_1 v_1
 ```
 
 with
@@ -392,56 +320,53 @@ with
 ```math
 \lambda_1
 =
-\max_{\|v\|=1}
-v^\top\Sigma v
+\max_{v^\top v=1}
+v^\top \Sigma v
 ```
+
+So $v_1$ is the first principal component direction.
 
 ---
 
-## Eigenvalue as Explained Variance
+## Eigenvalues and Explained Variance
 
-For eigenvector $v_i$,
+For an eigenvector $v_i$,
 
 ```math
-\Sigma v_i
-=
-\lambda_i v_i
+\Sigma v_i = \lambda_i v_i
 ```
 
-Then
+The variance along this direction is
 
 ```math
-\operatorname{Var}(v_i^\top z)
+\mathrm{Var}(v_i^\top z)
 =
-v_i^\top\Sigma v_i
+v_i^\top \Sigma v_i
 ```
 
-so
+Using the eigenvalue equation,
 
 ```math
-\operatorname{Var}(v_i^\top z)
+\mathrm{Var}(v_i^\top z)
 =
-v_i^\top
-(\lambda_i v_i)
+v_i^\top (\lambda_i v_i)
 ```
 
-and because
+and since
 
 ```math
-v_i^\top v_i=1
+v_i^\top v_i = 1
 ```
 
 we get
 
 ```math
-\boxed{
-\operatorname{Var}(v_i^\top z)
+\mathrm{Var}(v_i^\top z)
 =
 \lambda_i
-}
 ```
 
-Thus each eigenvalue measures the variance explained by its principal component.
+Therefore each eigenvalue is the variance explained by its principal component.
 
 ---
 
@@ -449,33 +374,33 @@ Thus each eigenvalue measures the variance explained by its principal component.
 
 `numpy.linalg.eigh()` returns eigenvalues in ascending order.
 
-The code reverses this ordering so that
+The code reverses them so that
 
 ```math
 \lambda_1
-\geq
+\ge
 \lambda_2
-\geq
+\ge
 \cdots
-\geq
+\ge
 \lambda_N
 ```
 
-The corresponding eigenvectors are reordered in exactly the same way.
+The eigenvectors are reordered in the same way.
 
 ---
 
 ## Explained Variance Ratio
 
-Total variance equals the trace of the covariance matrix:
+The total variance is the trace of the covariance matrix:
 
 ```math
-\operatorname{tr}(\Sigma)
+\mathrm{tr}(\Sigma)
 =
 \sum_{i=1}^{N}\lambda_i
 ```
 
-Therefore the explained-variance ratio of PC $i$ is
+The explained-variance ratio of principal component $i$ is
 
 ```math
 EVR_i
@@ -489,11 +414,8 @@ For the first $k$ principal components,
 ```math
 EVR_{1:k}
 =
-\frac{
-\lambda_1+\cdots+\lambda_k
-}{
-\sum_{j=1}^{N}\lambda_j
-}
+\frac{\lambda_1+\cdots+\lambda_k}
+{\sum_{j=1}^{N}\lambda_j}
 ```
 
 In code:
@@ -505,99 +427,93 @@ explained_variance_ratio = (
 )
 ```
 
+The final strategy uses
+
+```math
+k = 6
+```
+
+principal components.
+
 ---
 
-## Retaining the First k Components
+## Retained PCA Basis
 
 Let
 
 ```math
-Q_k
-=
-[v_1,\ldots,v_k]
+Q_k = [v_1,\ldots,v_k]
 ```
 
 Then
 
 ```math
-Q_k\in\mathbb{R}^{N\times k}
+Q_k \in \mathbb{R}^{N \times k}
 ```
 
-The project uses
+and
 
 ```math
-k=6
+Q_k^\top Q_k = I
 ```
 
-in the final model.
+The columns of $Q_k$ span the retained PCA factor subspace inside $\mathbb{R}^N$.
 
 ---
 
 ## PCA Scores
 
-For one centered observation,
+For a centered return vector
 
 ```math
-z_t=x_t-\mu
+z_t = x_t-\mu
 ```
 
-The PCA coordinates are
+the PCA coordinates are
 
 ```math
-c_t
-=
-Q_k^\top z_t
-```
-
-where
-
-```math
-c_t\in\mathbb{R}^{k}
-```
-
-The $i$-th score is
-
-```math
-c_{t,i}
-=
-v_i^\top z_t
-```
-
-This tells how much principal component $i$ appears on day $t$.
-
----
-
-## Matrix Form for All Days
-
-Because observations are stored as rows, the score matrix is
-
-```math
-C_k
-=
-X_cQ_k
+c_t = Q_k^\top z_t
 ```
 
 with
 
 ```math
-C_k\in\mathbb{R}^{T\times k}
+c_t \in \mathbb{R}^k
+```
+
+The individual score for PC $i$ is
+
+```math
+c_{t,i} = v_i^\top z_t
+```
+
+A score measures how strongly a particular PCA direction appears on day $t$.
+
+---
+
+## Matrix Form
+
+The observations are stored as rows.
+
+Therefore the score matrix for all days is
+
+```math
+C_k = X_c Q_k
+```
+
+with
+
+```math
+C_k \in \mathbb{R}^{T \times k}
 ```
 
 This is what `transform()` computes.
 
 ---
 
-## Loadings vs Scores
+## Loadings and Scores
 
-These two concepts are different.
-
-An eigenvector
-
-```math
-v_i
-```
-
-contains the loadings of PC $i$.
+A loading is a coordinate of an eigenvector.
 
 For example,
 
@@ -605,40 +521,29 @@ For example,
 v_1
 =
 \begin{bmatrix}
-v_{1,1}\\
-v_{1,2}\\
-\vdots\\
+v_{1,1} \\
+v_{1,2} \\
+\vdots \\
 v_{1,N}
 \end{bmatrix}
 ```
 
-contains one loading for each stock.
+contains the loadings of PC1 across the $N$ stocks.
 
-The score
+These values describe the PCA direction itself.
+
+A score is different:
 
 ```math
-c_{t,i}
-=
-v_i^\top z_t
+c_{t,i} = v_i^\top z_t
 ```
 
-depends on the trading day.
+It depends on the trading day and measures the amount of PC $i$ present in that observation.
 
 So:
 
-```math
-\text{loading}
-=
-\text{coordinate of the PCA direction}
-```
-
-while
-
-```math
-\text{score}
-=
-\text{amount of that PCA direction on day }t
-```
+- loadings describe the PCA direction;
+- scores describe the position of an observation along that direction.
 
 ---
 
@@ -647,25 +552,21 @@ while
 Using the first $k$ PCA scores,
 
 ```math
-c_t
-=
-Q_k^\top z_t
+c_t = Q_k^\top z_t
 ```
 
 the low-rank reconstruction is
 
 ```math
-\hat z_t
-=
-Q_kc_t
+\hat z_t = Q_k c_t
 ```
 
-Substituting the score formula,
+Substituting the score equation gives
 
 ```math
 \hat z_t
 =
-Q_kQ_k^\top z_t
+Q_k Q_k^\top z_t
 ```
 
 For the full data matrix,
@@ -673,7 +574,7 @@ For the full data matrix,
 ```math
 \hat X_c
 =
-X_cQ_kQ_k^\top
+X_c Q_k Q_k^\top
 ```
 
 This is what `reconstruct()` computes.
@@ -685,36 +586,33 @@ This is what `reconstruct()` computes.
 Define
 
 ```math
-P_k
-=
-Q_kQ_k^\top
+P_k = Q_k Q_k^\top
 ```
 
 Then
 
 ```math
-\hat z_t=P_kz_t
+\hat z_t = P_k z_t
 ```
 
 Because the columns of $Q_k$ are orthonormal,
 
 ```math
-P_k^\top=P_k
+P_k^\top = P_k
 ```
 
 and
 
 ```math
-P_k^2=P_k
+P_k^2 = P_k
 ```
 
-so $P_k$ is an orthogonal projection matrix.
+Therefore $P_k$ is an orthogonal projection matrix.
 
-Therefore PCA reconstruction is exactly the projection of the return vector onto
+The PCA reconstruction is the projection of $z_t$ onto the subspace generated by
 
 ```math
-\operatorname{span}
-(v_1,\ldots,v_k)
+v_1,\ldots,v_k
 ```
 
-The remaining component is handled in `residuals.py`.
+The remaining component lies in the orthogonal complement of that PCA subspace and is computed in `residuals.py`.
