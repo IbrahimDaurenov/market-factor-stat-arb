@@ -96,7 +96,7 @@ The square-root scaling comes from variance additivity.
 If daily returns were independent,
 
 ```math
-\operatorname{Var}
+\text{Var}
 \left(
 \sum_{t=1}^{252}R_t
 \right)
