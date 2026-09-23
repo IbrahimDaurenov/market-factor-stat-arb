@@ -59,9 +59,11 @@ Define the fraction of variance explained by PC1:
 
 $$m_t=\frac{\lambda_{1,t}}{\sum_j\lambda_{j,t}}$$
 
-New trades are allowed only when
+New trades are allowed only when the current PC1 share is above the median of the previous 252 days:
 
-$$m_t>\operatorname{Median}(m_{t-252},\dots,m_{t-1})$$
+$$m_t > q_t$$
+
+where $q_t$ is the rolling 252-day median of past PC1 shares.
 
 The goal is to trade residual mean reversion only when the common market-factor structure is relatively strong.
 
