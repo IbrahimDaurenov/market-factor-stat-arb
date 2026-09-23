@@ -230,9 +230,9 @@ A large $m_t$ means that a large fraction of total stock-return variance is expl
 The current PC1 share is compared with its historical rolling median.
 
 Define
-'''math
+```math
 q_t = \text{median}(m_{t-252}, \dots, m_{t-1})
-'''
+```
 
 The code shifts the PC1 series before calculating the threshold, so today's value is not used inside its own benchmark.
 
