@@ -52,7 +52,7 @@ The strategy tests whether these relative deviations mean-revert.
 
 ---
 
-# Rolling Z-Score
+## Rolling Z-Score
 
 To determine whether the current spread is unusual, it is standardized relative to its own recent history.
 
@@ -83,11 +83,8 @@ Then
 ```math
 z_{t,i}
 =
-\frac{
-s_{t,i}-\mu_{t,i}
-}{
-\sigma_{t,i}
-}
+\frac{s_{t,i}-\mu_{t,i}}
+{\sigma_{t,i}}
 ```
 
 The final model uses
@@ -111,30 +108,25 @@ past_spreads = spreads.shift(1)
 This means the rolling mean and standard deviation for day $t$ use only
 
 ```math
-s_{t-W},
-\ldots,
-s_{t-1}
+s_{t-W},\ldots,s_{t-1}
 ```
 
 and do not include $s_t$ itself.
 
-Therefore the chronology is
+The chronology is therefore:
 
-```math
-\text{past spreads}
-\rightarrow
-(\mu_t,\sigma_t)
-\rightarrow
-s_t
-\rightarrow
-z_t
+```text
+past spreads
+→ estimate historical mean and volatility
+→ observe current spread
+→ compute current z-score
 ```
 
-This avoids using information from the current observation to define its own historical distribution.
+This avoids using the current observation to define its own historical distribution.
 
 ---
 
-# Z-Score Trading Rule
+## Z-Score Trading Rule
 
 The final strategy uses
 
@@ -142,130 +134,88 @@ The final strategy uses
 z_{\mathrm{entry}}=2.5
 ```
 
-If
+Long entry:
 
 ```math
 z_{t,i}<-2.5
 ```
 
-the stock is a long candidate.
-
-If
+Short entry:
 
 ```math
 z_{t,i}>2.5
 ```
 
-the stock is a short candidate.
+The idea is mean reversion:
 
-The intuition is mean reversion:
-
-```math
-\text{large negative deviation}
-\rightarrow
-\text{expect upward correction}
-```
-
-and
-
-```math
-\text{large positive deviation}
-\rightarrow
-\text{expect downward correction}
-```
+- a large negative deviation becomes a long candidate;
+- a large positive deviation becomes a short candidate.
 
 This is a trading hypothesis, not a mathematical consequence of PCA.
 
-PCA only defines the residual.
-
-The mean-reversion assumption is tested by the backtest.
+PCA defines the residual; the backtest tests whether the residual deviations mean-revert.
 
 ---
 
-# Position State
+## Position State
 
 For every stock,
 
 ```math
-p_{t,i}
-\in
-\{-1,0,+1\}
+p_{t,i}\in\{-1,0,+1\}
 ```
 
-where
+where:
 
-```math
-+1=\text{long}
-```
-
-```math
--1=\text{short}
-```
-
-```math
-0=\text{flat}
+```text
++1 = long
+-1 = short
+ 0 = flat
 ```
 
 Positions persist across days rather than being rebuilt from zero every day.
 
 ---
 
-# Z-Score Exit Rule
+## Z-Score Exit Rule
 
-For a long position, the strategy exits when the spread returns to the center:
+A long position exits when
 
 ```math
 z_{t,i}\geq0
 ```
 
-For a short position, it exits when
+A short position exits when
 
 ```math
 z_{t,i}\leq0
 ```
 
-So the basic logic is
+So the basic logic is:
 
-```math
--2.5
-\rightarrow
-\text{long entry}
-\rightarrow
-0
-\rightarrow
-\text{exit}
-```
-
-or
-
-```math
-+2.5
-\rightarrow
-\text{short entry}
-\rightarrow
-0
-\rightarrow
-\text{exit}
+```text
+negative extreme → long → return to zero → exit
+positive extreme → short → return to zero → exit
 ```
 
 ---
 
-# Maximum Holding Period
+## Maximum Holding Period
 
 A position is also closed if it remains open for too long.
 
-If
+Let
 
 ```math
 h_{t,i}
 ```
 
-is the number of days the position has been held, then the position exits when
+be the number of days the position has been held.
+
+The position exits when
 
 ```math
-h_{t,i}
-\geq
-H_{\max}
+h_{t,i}\geq H_{\max}
 ```
 
 The final strategy uses
@@ -280,7 +230,7 @@ This prevents a failed mean-reversion trade from remaining open indefinitely.
 
 ---
 
-# Maximum Number of Positions
+## Maximum Number of Positions
 
 The strategy limits the number of simultaneous active positions.
 
@@ -290,16 +240,13 @@ Let
 A_t
 =
 \sum_i
-\mathbf{1}
-(p_{t,i}\neq0)
+\mathbf{1}(p_{t,i}\neq0)
 ```
 
 Then
 
 ```math
-A_t
-\leq
-A_{\max}
+A_t\leq A_{\max}
 ```
 
 The final model uses
@@ -310,9 +257,9 @@ A_{\max}=10
 
 ---
 
-# Ranking Simultaneous Signals
+## Ranking Simultaneous Signals
 
-More than 10 stocks can sometimes satisfy the entry rule on the same day.
+More than 10 stocks can satisfy the entry rule on the same day.
 
 For the z-score strategy, signal strength is
 
@@ -322,29 +269,26 @@ For the z-score strategy, signal strength is
 
 Candidates are sorted from largest to smallest absolute z-score.
 
-Therefore the most extreme residual deviations are selected first.
+The most extreme residual deviations are therefore selected first.
 
 ---
 
-# Exit Before Entry
+## Exit Before Entry
 
 `update_positions()` first processes existing positions.
 
 Only after exits are handled does it search for new entries.
 
-This order matters because closing positions can free capacity for new trades.
+The sequence is:
 
-The sequence is
-
-```math
-\text{existing positions}
-\rightarrow
-\text{exits}
-\rightarrow
-\text{available slots}
-\rightarrow
-\text{new entries}
+```text
+existing positions
+→ exits
+→ available slots
+→ new entries
 ```
+
+Closing a position can therefore free capacity for a new trade.
 
 ---
 
@@ -354,38 +298,30 @@ If a stock exits on day $t$, it is stored in `exited_today`.
 
 That stock cannot immediately reopen on the same day.
 
-This avoids the sequence
+This avoids:
 
-```math
-\text{exit}
-\rightarrow
-\text{immediate re-entry}
+```text
+exit → immediate re-entry
 ```
 
-from one observation.
+from the same observation.
 
 ---
 
-# Empirical Quantile Alternative
+## Empirical Quantile Alternative
 
 A second signal definition was tested without using z-scores.
 
 Instead of standardizing the spread, the historical empirical distribution is used directly.
 
-For each stock, calculate
+For each stock, the model estimates:
 
 ```math
-q_{low,t}
-```
-
-```math
-q_{50,t}
-```
-
-and
-
-```math
-q_{high,t}
+q_{\mathrm{low},t},
+\qquad
+q_{50,t},
+\qquad
+q_{\mathrm{high},t}
 ```
 
 from the previous $W$ observations.
@@ -393,13 +329,13 @@ from the previous $W$ observations.
 The implementation uses
 
 ```math
-q_{low}=0.025
+q_{\mathrm{low}}=0.025
 ```
 
 and
 
 ```math
-q_{high}=0.975
+q_{\mathrm{high}}=0.975
 ```
 
 so the entry thresholds correspond to the historical 2.5% and 97.5% tails.
@@ -411,13 +347,13 @@ so the entry thresholds correspond to the historical 2.5% and 97.5% tails.
 Long entry:
 
 ```math
-s_{t,i}<q_{low,t,i}
+s_{t,i}<q_{\mathrm{low},t,i}
 ```
 
 Short entry:
 
 ```math
-s_{t,i}>q_{high,t,i}
+s_{t,i}>q_{\mathrm{high},t,i}
 ```
 
 ---
@@ -436,22 +372,17 @@ Short positions exit when
 s_{t,i}\leq q_{50,t,i}
 ```
 
-Thus the historical median acts as the center of the distribution.
+The historical median acts as the center of the distribution.
 
 ---
 
 ## Quantile Signal Strength
 
-For simultaneous candidates, the code defines
+For simultaneous candidates, signal strength is
 
 ```math
-\text{strength}
-=
-\frac{
-|s_t-q_{50}|
-}{
-q_{high}-q_{low}
-}
+\frac{|s_t-q_{50}|}
+{q_{\mathrm{high}}-q_{\mathrm{low}}}
 ```
 
 The denominator normalizes the deviation by the historical width of the distribution.
@@ -471,15 +402,15 @@ In the final backtest it produced:
 - higher transaction costs;
 - lower Sharpe ratio.
 
-Therefore the final model uses the z-score signal.
+The final model therefore uses the z-score signal.
 
 ---
 
-# AR(1) Diagnostic
+## AR(1) Diagnostic
 
 An AR(1) model was also tested as an optional mean-reversion filter.
 
-Importantly, the implementation does **not** fit AR(1) directly to the daily residual $e_t$.
+The implementation does not fit AR(1) directly to the daily residual $e_t$.
 
 It first creates the cumulative residual level
 
@@ -516,11 +447,8 @@ the OLS slope is
 ```math
 \phi
 =
-\frac{
-\operatorname{Cov}(X,Y)
-}{
-\operatorname{Var}(X)
-}
+\frac{\mathrm{Cov}(X,Y)}
+{\mathrm{Var}(X)}
 ```
 
 Here,
@@ -538,23 +466,23 @@ Y=S_t
 so the rolling estimator is
 
 ```math
-\hat\phi
+\hat{\phi}
 =
 \frac{
-\operatorname{Cov}(S_{t-1},S_t)
+\mathrm{Cov}(S_{t-1},S_t)
 }{
-\operatorname{Var}(S_{t-1})
+\mathrm{Var}(S_{t-1})
 }
 ```
 
 The intercept is
 
 ```math
-\hat\alpha
+\hat{\alpha}
 =
-\bar S_t
+\bar{S}_t
 -
-\hat\phi\bar S_{t-1}
+\hat{\phi}\bar{S}_{t-1}
 ```
 
 ---
@@ -587,9 +515,9 @@ the effect of a deviation decays over time.
 
 ---
 
-# Half-Life
+## Half-Life
 
-Define half-life as the number of periods required for the expected deviation to fall to one half of its original size.
+Half-life is the number of periods required for the expected deviation to fall to one half of its original size.
 
 We require
 
@@ -600,26 +528,19 @@ We require
 Taking logarithms,
 
 ```math
-h\log(\phi)
-=
-\log(1/2)
+h\log(\phi)=\log(1/2)
 ```
 
 so
 
 ```math
-\boxed{
 h_{1/2}
 =
-\frac{
-\log(1/2)
-}{
-\log(\phi)
-}
-}
+\frac{\log(1/2)}
+{\log(\phi)}
 ```
 
-This is only meaningful in the implementation when
+This is meaningful in the implementation only when
 
 ```math
 0<\phi<1
@@ -631,14 +552,12 @@ This is only meaningful in the implementation when
 
 In the data, estimated $\phi$ was usually close to one.
 
-There is also an important structural reason for this.
+There is also a structural reason for this.
 
 Since
 
 ```math
-S_t
-=
-S_{t-1}+e_t
+S_t=S_{t-1}+e_t
 ```
 
 a cumulative sum of approximately zero-mean residuals naturally behaves similarly to a random walk.
@@ -649,11 +568,11 @@ A random walk corresponds approximately to
 \phi=1
 ```
 
-Therefore finding $\phi$ close to one for the cumulative residual level is not strong evidence against or for short-term residual mean reversion.
+Therefore a value of $\phi$ close to one for the cumulative residual level is not strong evidence for short-term mean reversion.
 
-Adding the AR(1) filter also reduced backtest performance.
+The AR(1) filter also reduced backtest performance.
 
-For this reason, the final specification uses
+The final specification therefore uses
 
 ```python
 use_ar1_filter = False
@@ -663,16 +582,12 @@ The AR(1) model remains in the project as a diagnostic and a failed experiment.
 
 ---
 
-# Optional AR Filter in Position Selection
+## Optional AR Filter in Position Selection
 
-If `phi_today` is supplied, an entry is accepted only when
+If `phi_today` is supplied, a new entry is accepted only when
 
 ```math
-\phi_{\min}
-<
-\phi_t
-<
-\phi_{\max}
+\phi_{\min}<\phi_t<\phi_{\max}
 ```
 
 If no AR parameters are supplied,
@@ -681,15 +596,15 @@ If no AR parameters are supplied,
 phi_today = None
 ```
 
-the AR filter is skipped completely.
+the filter is skipped completely.
 
 This is the configuration used by the final strategy.
 
 ---
 
-# Final Signal Specification
+## Final Signal Specification
 
-The final strategy therefore uses:
+The final strategy uses:
 
 ```math
 H=40
@@ -719,9 +634,9 @@ for maximum holding time, and
 A_{\max}=10
 ```
 
-for the number of simultaneous positions.
+for the maximum number of simultaneous positions.
 
-The final signal pipeline is
+The final pipeline is
 
 ```math
 e_t
@@ -730,9 +645,9 @@ s_t
 \rightarrow
 z_t
 \rightarrow
-\text{entry/exit rules}
-\rightarrow
 p_t
 ```
 
-AR(1) and empirical quantiles remain as alternative experiments rather than components of the final trading model.
+The mapping from $z_t$ to $p_t$ is determined by the entry and exit rules.
+
+AR(1) and empirical quantiles remain alternative experiments rather than components of the final trading model.
