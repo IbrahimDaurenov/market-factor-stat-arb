@@ -50,8 +50,7 @@ def download_prices(
 def compute_returns(prices):
     """
     Compute simple daily returns:
-
-        r_t = P_t / P_{t-1} - 1
+    
     """
 
     returns = prices.pct_change(fill_method=None)
@@ -65,14 +64,6 @@ def load_market_data(
     start="2019-01-01",
     end=None
 ):
-    """
-    Convenience function.
-
-    Returns:
-        prices
-        stock_returns
-        hedge_returns
-    """
 
     prices = download_prices(
         tickers=tickers,
