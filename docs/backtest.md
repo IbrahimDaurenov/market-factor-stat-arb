@@ -231,18 +231,9 @@ The current PC1 share is compared with its historical rolling median.
 
 Define
 
-```math
-q_t
-=
-\operatorname{median}
-(
-m_{t-252},
-\ldots,
-m_{t-1}
-)
-```
+q_t = \text{median}(m_{t-252}, \dots, m_{t-1})
 
-The code shifts the PC1 series before calculating the threshold, so today's value is not used inside its own benchmark. :contentReference[oaicite:1]{index=1}
+The code shifts the PC1 series before calculating the threshold, so today's value is not used inside its own benchmark.
 
 The regime is high when
 
