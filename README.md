@@ -69,15 +69,25 @@ The goal is to trade residual mean reversion only when the common market-factor 
 
 ## Factor-Neutral Portfolio
 
-Raw signal weights $w^{raw}$ are projected away from the retained PCA factors:
+The raw trading signal produces weights $w^{raw}$.
+
+These weights may still have exposure to the same market factors that PCA extracted.
+
+To remove this exposure, we project the portfolio onto the orthogonal complement of the PCA factor space:
 
 $$w=(I-Q_kQ_k^\top)w^{raw}$$
 
-Therefore
+Because
+
+$$Q_k^\top Q_k=I$$
+
+we get
 
 $$Q_k^\top w=0$$
 
-before gross-exposure scaling.
+so the portfolio has zero exposure to the retained PCA factors before gross-exposure scaling.
+
+This acts as a factor hedge. The final model does not use a separate SPY hedge.
 
 ## Final Parameters
 
@@ -128,6 +138,28 @@ The main limitation is sensitivity to the residual horizon:
 | 60 | -0.03 |
 
 So the result should be treated as **exploratory**, not as evidence of a stable trading alpha.
+
+
+## Tested Alternatives
+
+### AR(1) Mean-Reversion Filter
+
+We also tested an AR(1) model for the residual spread:
+
+$$s_{t+1}=\alpha+\phi s_t+\epsilon_{t+1}$$
+
+If $|\phi|<1$, deviations decay over time, which is consistent with mean reversion.
+
+In the data, the estimated $\phi$ was usually close to 1, and using AR(1) as an additional trading filter did not improve performance.
+
+The AR(1) filter was therefore removed from the final strategy.
+
+### Empirical Quantiles
+
+We also tested rolling empirical tail quantiles instead of the fixed z-score threshold.
+
+They generated more trades and higher transaction costs without improving Sharpe ratio, so the final strategy uses z-scores.
+
 
 ## Project Structure
 
