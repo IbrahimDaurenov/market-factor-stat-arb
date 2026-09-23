@@ -6,14 +6,12 @@ def build_raw_stock_weights(
     positions,
     position_size=0.05
 ):
-    """
-    Raw alpha portfolio before factor neutralization.
+    """Convert position states into raw portfolio weights."""
 
-    long  -> +position_size
-    short -> -position_size
-    """
-
-    return positions.astype(float) * position_size
+    return (
+        positions.astype(float)
+        * position_size
+    )
 
 
 def pca_neutralize_weights(
@@ -21,30 +19,10 @@ def pca_neutralize_weights(
     Q_k,
     max_gross=0.50
 ):
-    """
-    Remove exposure to the first k PCA factors.
-
-        w_neutral = (I - Q_k Q_k^T) w_raw
-
-    Therefore:
-
-        Q_k^T w_neutral = 0
-
-    Parameters
-    ----------
-    raw_weights : pd.Series, shape (N,)
-    Q_k : np.ndarray, shape (N, k)
-    max_gross : float
-        Maximum total stock gross exposure.
-
-    Returns
-    -------
-    pd.Series
-    """
+    """Remove exposure to the retained PCA factors."""
 
     w_raw = raw_weights.to_numpy()
 
-    # Projection onto residual subspace.
     projection = Q_k @ Q_k.T
 
     w_neutral = (
@@ -56,8 +34,6 @@ def pca_neutralize_weights(
         index=raw_weights.index
     )
 
-    # Projection can create small positions
-    # in many stocks. Keep gross exposure bounded.
     gross = weights.abs().sum()
 
     if gross > max_gross:
@@ -67,23 +43,23 @@ def pca_neutralize_weights(
 
 
 def factor_exposure(weights, Q_k):
-    """
-    Exposure to retained PCA factors:
+    """Compute exposure to the retained PCA factors."""
 
-        Q_k^T w
-
-    Should be approximately zero
-    after neutralization.
-    """
-
-    return Q_k.T @ weights.to_numpy()
+    return (
+        Q_k.T
+        @ weights.to_numpy()
+    )
 
 
 def net_exposure(weights):
+    """Compute net portfolio exposure."""
+
     return weights.sum()
 
 
 def gross_exposure(weights):
+    """Compute gross portfolio exposure."""
+
     return weights.abs().sum()
 
 
@@ -91,14 +67,11 @@ def calculate_turnover(
     new_weights,
     old_weights
 ):
-    """
-    Gross traded notional:
+    """Compute gross traded notional as a fraction of equity."""
 
-        turnover = sum_i |w_t,i - w_{t-1,i}|
-    """
-
-    all_assets = new_weights.index.union(
-        old_weights.index
+    all_assets = (
+        new_weights.index
+        .union(old_weights.index)
     )
 
     new_weights = new_weights.reindex(

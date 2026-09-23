@@ -3,11 +3,7 @@ import pandas as pd
 
 
 def equity_curve(returns, initial_capital=100_000):
-    """
-    Build equity curve from periodic returns.
-
-        V_t = V_{t-1} (1 + R_t)
-    """
+    """Build the portfolio equity curve."""
 
     growth = (1 + returns).cumprod()
 
@@ -15,23 +11,23 @@ def equity_curve(returns, initial_capital=100_000):
 
 
 def cumulative_return(returns):
-    """
-    Total compounded return:
-
-        prod(1 + R_t) - 1
-    """
+    """Compute total compounded return."""
 
     return (1 + returns).prod() - 1
 
 
-def annualized_volatility(returns, periods_per_year=252):
-    """
-    Annualized volatility.
-    """
+def annualized_volatility(
+    returns,
+    periods_per_year=252
+):
+    """Compute annualized return volatility."""
 
     daily_vol = returns.std(ddof=1)
 
-    return daily_vol * np.sqrt(periods_per_year)
+    return (
+        daily_vol
+        * np.sqrt(periods_per_year)
+    )
 
 
 def sharpe_ratio(
@@ -39,64 +35,59 @@ def sharpe_ratio(
     risk_free_rate=0.0,
     periods_per_year=252
 ):
-    """
-    Annualized Sharpe ratio.
+    """Compute annualized Sharpe ratio."""
 
-    Assumes risk_free_rate is annualized.
-    """
+    daily_rf = (
+        risk_free_rate
+        / periods_per_year
+    )
 
-    if returns.std(ddof=1) == 0:
+    excess_returns = (
+        returns - daily_rf
+    )
+
+    volatility = excess_returns.std(
+        ddof=1
+    )
+
+    if volatility == 0:
         return np.nan
-
-    daily_rf = risk_free_rate / periods_per_year
-
-    excess_returns = returns - daily_rf
 
     return (
         np.sqrt(periods_per_year)
         * excess_returns.mean()
-        / excess_returns.std(ddof=1)
+        / volatility
     )
 
 
 def drawdown_series(equity):
-    """
-    Drawdown from previous running peak.
-
-        D_t = (V_t - M_t) / M_t
-    """
+    """Compute drawdown from the running peak."""
 
     running_max = equity.cummax()
 
-    drawdown = (
+    return (
         equity - running_max
     ) / running_max
 
-    return drawdown
-
 
 def max_drawdown(equity):
-    """
-    Worst historical drawdown.
-    """
+    """Return the maximum historical drawdown."""
 
-    drawdown = drawdown_series(equity)
-
-    return drawdown.min()
+    return drawdown_series(
+        equity
+    ).min()
 
 
 def performance_summary(
     performance,
     initial_capital=100_000
 ):
-    """
-    Summarize backtest performance.
+    """Summarize backtest performance."""
 
-    Expects performance DataFrame returned
-    by run_backtest().
-    """
-
-    returns = performance["net_return"].dropna()
+    returns = (
+        performance["net_return"]
+        .dropna()
+    )
 
     equity = equity_curve(
         returns,
@@ -120,13 +111,19 @@ def performance_summary(
             performance["turnover"].mean(),
 
         "Total Transaction Costs":
-            performance["transaction_cost"].sum(),
+            performance[
+                "transaction_cost"
+            ].sum(),
 
         "Average Gross Exposure":
-            performance["gross_exposure"].mean(),
+            performance[
+                "gross_exposure"
+            ].mean(),
 
         "Average Active Positions":
-            performance["active_positions"].mean()
+            performance[
+                "active_positions"
+            ].mean()
     }
 
     return pd.Series(summary)

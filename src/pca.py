@@ -2,77 +2,61 @@ import numpy as np
 
 
 def covariance_matrix(X_centered):
-    """
-    Sample covariance matrix:
-
-        Sigma = X^T X / (T - 1)
-
-    X_centered shape:
-        (T, N)
-    """
+    """Compute the sample covariance matrix."""
 
     T = X_centered.shape[0]
 
-    return X_centered.T @ X_centered / (T - 1)
+    return (
+        X_centered.T
+        @ X_centered
+        / (T - 1)
+    )
 
 
 def fit_pca(X, k):
-    """
-    Fit PCA manually using eigendecomposition
-    of the covariance matrix.
-
-    Parameters
-    ----------
-    X : np.ndarray
-        Shape (T, N).
-        Rows = days.
-        Columns = stocks.
-
-    k : int
-        Number of principal components to keep.
-
-    Returns
-    -------
-    mean : np.ndarray, shape (N,)
-    eigenvalues : np.ndarray, shape (N,)
-    eigenvectors : np.ndarray, shape (N, N)
-    explained_variance_ratio : np.ndarray, shape (N,)
-    Q_k : np.ndarray, shape (N, k)
-    """
+    """Fit PCA using covariance eigendecomposition."""
 
     if X.ndim != 2:
-        raise ValueError("X must be a 2D matrix.")
+        raise ValueError(
+            "X must be a 2D matrix."
+        )
 
-    T, N = X.shape
+    _, N = X.shape
 
     if not 1 <= k <= N:
-        raise ValueError(f"k must satisfy 1 <= k <= {N}")
+        raise ValueError(
+            f"k must satisfy 1 <= k <= {N}"
+        )
 
-    # Mean return of every stock.
     mean = X.mean(axis=0)
 
-    # Center the data.
     X_centered = X - mean
 
-    # Covariance matrix.
-    Sigma = covariance_matrix(X_centered)
-
-    # Sigma is symmetric, so use eigh.
-    eigenvalues, eigenvectors = np.linalg.eigh(Sigma)
-
-    # np.linalg.eigh returns eigenvalues
-    # from smallest to largest.
-    order = np.argsort(eigenvalues)[::-1]
-
-    eigenvalues = eigenvalues[order]
-    eigenvectors = eigenvectors[:, order]
-
-    # Fraction of total variance explained by each PC.
-    explained_variance_ratio = (
-        eigenvalues / eigenvalues.sum()
+    Sigma = covariance_matrix(
+        X_centered
     )
 
-    # First k eigenvectors.
+    eigenvalues, eigenvectors = (
+        np.linalg.eigh(Sigma)
+    )
+
+    order = np.argsort(
+        eigenvalues
+    )[::-1]
+
+    eigenvalues = (
+        eigenvalues[order]
+    )
+
+    eigenvectors = (
+        eigenvectors[:, order]
+    )
+
+    explained_variance_ratio = (
+        eigenvalues
+        / eigenvalues.sum()
+    )
+
     Q_k = eigenvectors[:, :k]
 
     return (
@@ -85,14 +69,7 @@ def fit_pca(X, k):
 
 
 def transform(X, mean, Q_k):
-    """
-    Convert stock coordinates to PCA coordinates.
-
-        C_k = (X - mean) Q_k
-
-    Output shape:
-        (T, k)
-    """
+    """Project returns into PCA coordinates."""
 
     X_centered = X - mean
 
@@ -100,16 +77,12 @@ def transform(X, mean, Q_k):
 
 
 def reconstruct(X, mean, Q_k):
-    """
-    Reconstruct the centered component explained
-    by the first k principal components.
-
-        X_hat = (X - mean) Q_k Q_k^T
-
-    Note:
-    X_hat is still in centered-return space.
-    """
+    """Reconstruct returns from the retained PCs."""
 
     X_centered = X - mean
 
-    return X_centered @ Q_k @ Q_k.T
+    return (
+        X_centered
+        @ Q_k
+        @ Q_k.T
+    )
